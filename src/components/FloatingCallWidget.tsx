@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Maximize2, GripHorizontal } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTwilioVoiceContext } from '@/contexts/TwilioVoiceContext';
@@ -20,44 +20,40 @@ export default function FloatingCallWidget() {
   const dragOffset = useRef({ x: 0, y: 0 });
   const widgetRef = useRef<HTMLDivElement>(null);
 
-  const isOnCall = status === 'in-call' || status === 'calling' || status === 'ringing';
-  const isOnDialerPage = location.pathname === '/calls';
-
-  // Don't show if not on a call or if user is already on the dialer page
-  if (!isOnCall || isOnDialerPage) return null;
-
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!widgetRef.current) return;
     setIsDragging(true);
     dragOffset.current = {
       x: e.clientX - position.x,
       y: e.clientY - position.y,
     };
-  };
+  }, [position]);
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-    setPosition({
-      x: e.clientX - dragOffset.current.x,
-      y: e.clientY - dragOffset.current.y,
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Attach global mouse listeners for drag
+  // Attach global mouse listeners for drag — must be above any conditional return
   useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
+    if (!isDragging) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      setPosition({
+        x: e.clientX - dragOffset.current.x,
+        y: e.clientY - dragOffset.current.y,
+      });
+    };
+    const onMouseUp = () => setIsDragging(false);
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
     };
   }, [isDragging]);
+
+  const isOnCall = status === 'in-call' || status === 'calling' || status === 'ringing';
+  const isOnDialerPage = location.pathname === '/calls';
+
+  // Don't render if not on a call or if user is on the dialer page
+  if (!isOnCall || isOnDialerPage) return null;
 
   return (
     <div
