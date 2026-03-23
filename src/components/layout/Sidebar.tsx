@@ -23,7 +23,7 @@ const navigation = [
   { name: 'Campaigns', href: '/campaigns', icon: Megaphone },
   { name: 'Omni-Channel', href: '/omni-channel', icon: Inbox },
   { name: 'Workflow Builder', href: '/ide', icon: GitBranch },
-  { name: 'Active Calls', href: '/calls', icon: PhoneCall },
+  { name: 'Dialer', href: '/calls', icon: PhoneCall },
   { name: 'Live Monitoring', href: '/live-monitoring', icon: Activity },
   { name: 'Data Optimization', href: '/data-optimization', icon: Target },
   { name: 'Voice AI Engine', href: '/voice-automation', icon: Bot },
