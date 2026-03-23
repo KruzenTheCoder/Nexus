@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getOpenAIKey } from '../_lib/configStore';
+import { getOpenAIKey } from '../_lib/configStore.js';
 
 // ─── Natural Speaker System Prompt ─────────────────────────
 const NATURAL_SPEAKER_PROMPT = `Role: You are a helpful, high-energy voice assistant having a natural phone conversation.

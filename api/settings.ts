@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { loadAllConfig, saveConfig } from './_lib/configStore';
+import { loadAllConfig, saveConfig } from './_lib/configStore.js';
 
 // Mask a secret string for safe display
 function mask(value: string | undefined): string {
