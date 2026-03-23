@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Phone, PhoneOff, Mic, MicOff, Bot, AlertTriangle, Settings,
   Search, UserCircle, Clock, Play, Pause, SkipForward, List,
   Hash, Delete, ChevronRight, PhoneCall, Users, Zap, FileText
 } from 'lucide-react';
-import { useTwilioVoice } from '@/hooks/useTwilioVoice';
+import { useTwilioVoiceContext, CallerInfo } from '@/contexts/TwilioVoiceContext';
 import { useSocket } from '@/hooks/useSocket';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -58,8 +58,6 @@ export default function Calls() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [dialerMode, setDialerMode] = useState<DialerMode>('manual');
   const [callNotes, setCallNotes] = useState('');
-  const [callTimer, setCallTimer] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Lead queue state
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -69,8 +67,8 @@ export default function Calls() {
   const [isAutoDialing, setIsAutoDialing] = useState(false);
   const [loadingLeads, setLoadingLeads] = useState(true);
 
-  // Twilio & socket
-  const { status, makeCall, endCall, isMuted, toggleMute, errorMessage } = useTwilioVoice();
+  // Twilio (global context — persists across navigation) & socket
+  const { status, makeCall, endCall, isMuted, toggleMute, errorMessage, callTimer, setCallerInfo } = useTwilioVoiceContext();
   const { isConnected, aiAnalysis, sendTranscription } = useSocket('demo-call-123');
   const navigate = useNavigate();
 
@@ -96,19 +94,13 @@ export default function Calls() {
     fetchLeads();
   }, []);
 
-  // ─── Call timer ─────────────────────────────────────
-  useEffect(() => {
-    if (status === 'in-call') {
-      setCallTimer(0);
-      timerRef.current = setInterval(() => setCallTimer(t => t + 1), 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [status]);
+  // ─── Build CallerInfo from a lead ──────────────────
+  const leadToCallerInfo = (lead: Lead): CallerInfo => ({
+    name: `${lead.first_name} ${lead.last_name}`,
+    initials: `${lead.first_name?.[0] || ''}${lead.last_name?.[0] || ''}`,
+    company: lead.company || '',
+    phone: lead.phone,
+  });
 
   // ─── Auto-dialer: move to next lead when call ends ──
   useEffect(() => {
@@ -122,7 +114,7 @@ export default function Calls() {
             setSelectedLead(next);
             setPhoneNumber(next.phone);
             setCallNotes('');
-            makeCall(next.phone);
+            makeCall(next.phone, leadToCallerInfo(next));
           }
         } else {
           setIsAutoDialing(false);
@@ -158,9 +150,10 @@ export default function Calls() {
       endCall();
     } else if (phoneNumber.trim()) {
       setCallNotes('');
-      makeCall(phoneNumber.replace(/[^\d+*#]/g, ''));
+      const info = selectedLead ? leadToCallerInfo(selectedLead) : { name: phoneNumber, initials: '#', company: '', phone: phoneNumber };
+      makeCall(phoneNumber.replace(/[^\d+*#]/g, ''), info);
     }
-  }, [status, phoneNumber, makeCall, endCall]);
+  }, [status, phoneNumber, makeCall, endCall, selectedLead]);
 
   const handleLeadDial = useCallback((lead: Lead) => {
     setSelectedLead(lead);
@@ -168,7 +161,7 @@ export default function Calls() {
     setCallNotes('');
     setDialerMode('manual');
     if (status === 'ready') {
-      makeCall(lead.phone.replace(/[^\d+*#]/g, ''));
+      makeCall(lead.phone.replace(/[^\d+*#]/g, ''), leadToCallerInfo(lead));
     }
   }, [status, makeCall]);
 
@@ -183,7 +176,7 @@ export default function Calls() {
         setPhoneNumber(lead.phone);
         setCallNotes('');
         if (status === 'ready') {
-          makeCall(lead.phone.replace(/[^\d+*#]/g, ''));
+          makeCall(lead.phone.replace(/[^\d+*#]/g, ''), leadToCallerInfo(lead));
         }
       }
     }
