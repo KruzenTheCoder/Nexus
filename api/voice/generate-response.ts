@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
-import { getOpenAIKey } from '../_lib/configStore';
 
 // ─── Natural Speaker System Prompt ─────────────────────────
 const NATURAL_SPEAKER_PROMPT = `Role: You are a helpful, high-energy voice assistant having a natural phone conversation.
@@ -56,20 +54,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { text, callId, enableNaturalSpeech = true } = req.body;
-  // Load OpenAI key from Supabase config store (falls back to env var)
-  const openaiApiKey = await getOpenAIKey();
-
-  if (!openaiApiKey || openaiApiKey === 'your_openai_api_key_here') {
-    return res.json({
-      response: "Hmm, I'm still getting set up here. Could you give me just a sec?",
-      shouldUseRecovery: false,
-    });
-  }
-
-  const openai = new OpenAI({ apiKey: openaiApiKey });
-
   try {
+    const { text, callId, enableNaturalSpeech = true } = req.body;
+
+    // Dynamic imports to avoid top-level crash on Vercel
+    const OpenAI = (await import('openai')).default;
+    const { getOpenAIKey } = await import('../_lib/configStore');
+
+    const openaiApiKey = await getOpenAIKey();
+
+    if (!openaiApiKey || openaiApiKey === 'your_openai_api_key_here') {
+      return res.json({
+        response: "Hmm, I'm still getting set up here. Could you give me just a sec?",
+        shouldUseRecovery: false,
+      });
+    }
+
+    const openai = new OpenAI({ apiKey: openaiApiKey });
+
     const state = conversationStates.get(callId) || { wasInterrupted: false, context: [], lastSpokenText: '' };
     const isRecovery = state.wasInterrupted;
 
@@ -123,8 +125,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     conversationStates.set(callId, state);
 
     return res.json({ response: aiResponse, shouldUseRecovery: isRecovery });
-  } catch (error) {
-    console.error('OpenAI Error:', error);
+  } catch (error: any) {
+    console.error('Error in /api/voice/generate-response:', error);
     return res.json({
       response: "Oh, sorry about that. I'm having a little trouble. Can you say that again?",
       shouldUseRecovery: false,

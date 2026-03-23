@@ -1,6 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import twilio from 'twilio';
-import { getTwilioConfig } from '../_lib/configStore';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,20 +8,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const cfg = await getTwilioConfig();
-  const { accountSid, authToken } = req.body;
-  const sid = accountSid || cfg.accountSid;
-  const token = authToken || cfg.authToken;
-
-  if (!sid || !token) {
-    return res.status(400).json({ success: false, error: 'Account SID and Auth Token are required' });
-  }
-
-  if (!sid.startsWith('AC') || sid.length !== 34) {
-    return res.status(400).json({ success: false, error: 'Invalid Account SID format.' });
-  }
-
   try {
+    const twilio = (await import('twilio')).default;
+    const { getTwilioConfig } = await import('../_lib/configStore');
+
+    const cfg = await getTwilioConfig();
+    const { accountSid, authToken } = req.body;
+    const sid = accountSid || cfg.accountSid;
+    const token = authToken || cfg.authToken;
+
+    if (!sid || !token) {
+      return res.status(400).json({ success: false, error: 'Account SID and Auth Token are required' });
+    }
+
+    if (!sid.startsWith('AC') || sid.length !== 34) {
+      return res.status(400).json({ success: false, error: 'Invalid Account SID format.' });
+    }
+
     const client = twilio(sid, token);
     const account = await client.api.v2010.accounts(sid).fetch();
 

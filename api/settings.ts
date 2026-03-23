@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { loadAllConfig, saveConfig } from './_lib/configStore';
 
 // Mask a secret string for safe display
 function mask(value: string | undefined): string {
@@ -15,32 +14,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── GET /api/settings ─────────────────────────────────────
-  if (req.method === 'GET') {
-    const config = await loadAllConfig();
+  try {
+    const { loadAllConfig, saveConfig } = await import('./_lib/configStore');
 
-    // Return with secrets masked
-    const safe: Record<string, any> = { ...config };
-    const secretKeys = ['twilioAuthToken', 'twilioApiKey', 'twilioApiSecret', 'openaiApiKey', 'supabaseKey'];
-    for (const key of secretKeys) {
-      if (safe[key]) {
-        safe[key + '_masked'] = mask(safe[key]);
-        safe[key] = ''; // Don't send the real value to frontend
+    // ── GET /api/settings ─────────────────────────────────────
+    if (req.method === 'GET') {
+      const config = await loadAllConfig();
+
+      const safe: Record<string, any> = { ...config };
+      const secretKeys = ['twilioAuthToken', 'twilioApiKey', 'twilioApiSecret', 'openaiApiKey', 'supabaseKey'];
+      for (const key of secretKeys) {
+        if (safe[key]) {
+          safe[key + '_masked'] = mask(safe[key]);
+          safe[key] = '';
+        }
       }
+
+      return res.status(200).json({ success: true, settings: safe });
     }
 
-    return res.status(200).json({ success: true, settings: safe });
-  }
-
-  // ── POST /api/settings ────────────────────────────────────
-  if (req.method === 'POST') {
-    try {
+    // ── POST /api/settings ────────────────────────────────────
+    if (req.method === 'POST') {
       const incoming = req.body;
 
-      // Save to Supabase config store (persists across all serverless functions)
       const saved = await saveConfig(incoming);
 
-      // Validate Twilio credentials if provided
       let twilioValidation: any = null;
       const allConfig = await loadAllConfig();
       const sid = incoming.twilioAccountSid || allConfig.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID;
@@ -73,14 +71,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : 'Settings validated but could not persist (check Supabase connection)',
         twilioValidation,
       });
-    } catch (error: any) {
-      console.error('Error saving settings:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to save settings: ' + (error.message || 'Unknown error'),
-      });
     }
-  }
 
-  return res.status(405).json({ success: false, error: 'Method not allowed' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  } catch (error: any) {
+    console.error('Error in /api/settings:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
+  }
 }

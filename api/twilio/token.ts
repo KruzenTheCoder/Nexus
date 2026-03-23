@@ -1,9 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import twilio from 'twilio';
-import { getTwilioConfig } from '../_lib/configStore';
-
-const AccessToken = twilio.jwt.AccessToken;
-const VoiceGrant = AccessToken.VoiceGrant;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,18 +8,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const identity = (req.query.identity as string) || 'anonymous_agent';
-
-  // Load credentials from Supabase config store (falls back to env vars)
-  const cfg = await getTwilioConfig();
-
-  if (!cfg.accountSid || !cfg.apiKey || !cfg.apiSecret || !cfg.twimlAppSid) {
-    return res.status(500).json({
-      error: 'Twilio credentials not fully configured. Please update them in System Configuration.',
-    });
-  }
-
   try {
+    const identity = (req.query.identity as string) || 'anonymous_agent';
+
+    // Dynamic imports to avoid top-level crash
+    const twilio = (await import('twilio')).default;
+    const { getTwilioConfig } = await import('../_lib/configStore');
+
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
+
+    // Load credentials from Supabase config store (falls back to env vars)
+    const cfg = await getTwilioConfig();
+
+    if (!cfg.accountSid || !cfg.apiKey || !cfg.apiSecret || !cfg.twimlAppSid) {
+      return res.status(500).json({
+        error: 'Twilio credentials not fully configured. Please update them in System Configuration.',
+      });
+    }
+
     const token = new AccessToken(cfg.accountSid, cfg.apiKey, cfg.apiSecret, { identity });
 
     const voiceGrant = new VoiceGrant({
@@ -34,8 +36,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     token.addGrant(voiceGrant);
 
     return res.json({ token: token.toJwt(), identity });
-  } catch (error) {
-    console.error('Error generating token:', error);
-    return res.status(500).json({ error: 'Failed to generate token' });
+  } catch (error: any) {
+    console.error('Error in /api/twilio/token:', error);
+    return res.status(500).json({ error: error.message || 'Failed to generate token' });
   }
 }

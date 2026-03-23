@@ -25,7 +25,18 @@ export function useTwilioVoice() {
       
       try {
         const response = await fetch(`${API_URL}/api/twilio/token?identity=${user.id}`);
-        const data = await response.json();
+        
+        // Safely parse JSON - Vercel may return HTML error pages
+        let data: any;
+        const text = await response.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.error('[TwilioVoice] Non-JSON response:', text.substring(0, 200));
+          setStatus('error');
+          setErrorMessage('Server error — check Vercel function logs');
+          return;
+        }
 
         if (!response.ok) {
           // Server returned an error
