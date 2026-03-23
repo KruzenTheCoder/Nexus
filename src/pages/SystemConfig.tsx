@@ -6,7 +6,7 @@ import {
   Inbox, MessageCircle, Loader2, XCircle
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4444';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:4444');
 
 const TABS = [
   { id: 'sip', label: 'SIP / Trunk', icon: Phone, color: 'text-blue-600' },

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Device, Call } from '@twilio/voice-sdk';
 import { useAuthStore } from '@/store/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4444';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:4444');
 
 export type TwilioStatus = 'disconnected' | 'connecting' | 'ready' | 'calling' | 'ringing' | 'in-call' | 'error' | 'not-configured';
 

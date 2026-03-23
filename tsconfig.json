@@ -34,7 +34,10 @@
     ]
   },
   "include": [
-    "src",
-    "api"
+    "src"
+  ],
+  "exclude": [
+    "api",
+    "server"
   ]
 }
