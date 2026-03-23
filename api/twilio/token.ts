@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { getTwilioConfig } from '../_lib/configStore';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,9 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const identity = (req.query.identity as string) || 'anonymous_agent';
 
-    // Dynamic imports to avoid top-level crash
+    // Dynamic import for twilio only (heavy package, may have ESM/CJS issues)
     const twilio = (await import('twilio')).default;
-    const { getTwilioConfig } = await import('../_lib/configStore');
 
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;

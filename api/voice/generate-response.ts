@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { getOpenAIKey } from '../_lib/configStore';
 
 // ─── Natural Speaker System Prompt ─────────────────────────
 const NATURAL_SPEAKER_PROMPT = `Role: You are a helpful, high-energy voice assistant having a natural phone conversation.
@@ -57,9 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { text, callId, enableNaturalSpeech = true } = req.body;
 
-    // Dynamic imports to avoid top-level crash on Vercel
+    // Dynamic import for OpenAI only (heavy package)
     const OpenAI = (await import('openai')).default;
-    const { getOpenAIKey } = await import('../_lib/configStore');
 
     const openaiApiKey = await getOpenAIKey();
 

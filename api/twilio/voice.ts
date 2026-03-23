@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { getTwilioConfig } from '../_lib/configStore';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,7 +11,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const twilio = (await import('twilio')).default;
-    const { getTwilioConfig } = await import('../_lib/configStore');
 
     const cfg = await getTwilioConfig();
     const { To } = req.body;

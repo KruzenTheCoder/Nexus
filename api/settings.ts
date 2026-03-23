@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { loadAllConfig, saveConfig } from './_lib/configStore';
 
 // Mask a secret string for safe display
 function mask(value: string | undefined): string {
@@ -15,8 +16,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { loadAllConfig, saveConfig } = await import('./_lib/configStore');
-
     // ── GET /api/settings ─────────────────────────────────────
     if (req.method === 'GET') {
       const config = await loadAllConfig();
