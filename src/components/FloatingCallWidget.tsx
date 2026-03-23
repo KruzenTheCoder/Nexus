@@ -14,11 +14,18 @@ export default function FloatingCallWidget() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Dragging state
-  const [position, setPosition] = useState({ x: 20, y: 20 });
+  // Dragging state — position is top/left based
+  const WIDGET_W = 290;
+  const WIDGET_H = 140;
+  const [position, setPosition] = useState(() => ({
+    x: window.innerWidth - WIDGET_W - 20,
+    y: window.innerHeight - WIDGET_H - 20,
+  }));
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const widgetRef = useRef<HTMLDivElement>(null);
+
+  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!widgetRef.current) return;
@@ -34,9 +41,12 @@ export default function FloatingCallWidget() {
     if (!isDragging) return;
 
     const onMouseMove = (e: MouseEvent) => {
+      const el = widgetRef.current;
+      const w = el?.offsetWidth || WIDGET_W;
+      const h = el?.offsetHeight || WIDGET_H;
       setPosition({
-        x: e.clientX - dragOffset.current.x,
-        y: e.clientY - dragOffset.current.y,
+        x: clamp(e.clientX - dragOffset.current.x, 0, window.innerWidth - w),
+        y: clamp(e.clientY - dragOffset.current.y, 0, window.innerHeight - h),
       });
     };
     const onMouseUp = () => setIsDragging(false);
@@ -59,7 +69,7 @@ export default function FloatingCallWidget() {
     <div
       ref={widgetRef}
       className="fixed z-[9999] select-none"
-      style={{ bottom: position.y, right: position.x }}
+      style={{ top: position.y, left: position.x }}
     >
       <div className="bg-slate-900 text-white rounded-2xl shadow-2xl shadow-black/30 border border-slate-700/50 overflow-hidden backdrop-blur-xl"
         style={{ minWidth: '280px' }}
